@@ -37,7 +37,7 @@ CONF_GATEWAYS = 'gateways'
 CONF_INTERFACE = 'interface'
 CONF_KEY = 'key'
 
-DOMAIN = 'xiaomi_aqara_teuz'
+DOMAIN = 'xiaomi_aqara'
 
 PY_XIAOMI_GATEWAY = "xiaomi_gw"
 

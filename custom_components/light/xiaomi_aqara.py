@@ -2,7 +2,7 @@
 import logging
 import struct
 import binascii
-from custom_components.xiaomi_aqara_teuz import (PY_XIAOMI_GATEWAY,
+from custom_components.xiaomi_aqara import (PY_XIAOMI_GATEWAY,
                                                    XiaomiDevice)
 from homeassistant.components.light import (ATTR_BRIGHTNESS, ATTR_HS_COLOR,
                                             SUPPORT_BRIGHTNESS,

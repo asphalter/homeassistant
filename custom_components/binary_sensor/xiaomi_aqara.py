@@ -2,7 +2,7 @@
 import logging
 
 from homeassistant.components.binary_sensor import BinarySensorDevice
-from custom_components.xiaomi_aqara_teuz import (PY_XIAOMI_GATEWAY,
+from custom_components.xiaomi_aqara import (PY_XIAOMI_GATEWAY,
                                                    XiaomiDevice)
 
 _LOGGER = logging.getLogger(__name__)
