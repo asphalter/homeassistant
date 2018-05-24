@@ -4,6 +4,9 @@ import logging
 from homeassistant.components.binary_sensor import BinarySensorDevice
 from custom_components.xiaomi_aqara import (PY_XIAOMI_GATEWAY,
                                                    XiaomiDevice)
+from time import time
+from math import floor
+from random import randint
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +21,10 @@ ATTR_NO_MOTION_SINCE = 'No motion since'
 DENSITY = 'density'
 ATTR_DENSITY = 'Density'
 
+FAST_POLL_INTERVAL = 30
+MIN_SLEEP_POLL_INTERVAL = 600
+MAX_SLEEP_POLL_INTERVAL = 1800
+ 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Perform the setup for Xiaomi devices."""
@@ -60,14 +67,16 @@ class XiaomiBinarySensor(XiaomiDevice, BinarySensorDevice):
         """Initialize the XiaomiSmokeSensor."""
         self._data_key = data_key
         self._device_class = device_class
-        self._should_poll = False
+        self._fast_polling = False
+        self._polling_interval = 0
+        self._last_updated = 0
         self._density = 0
         XiaomiDevice.__init__(self, device, name, xiaomi_hub)
 
     @property
     def should_poll(self):
         """Return True if entity has to be polled for state."""
-        return self._should_poll
+        return True
 
     @property
     def is_on(self):
@@ -81,8 +90,16 @@ class XiaomiBinarySensor(XiaomiDevice, BinarySensorDevice):
 
     def update(self):
         """Update the sensor state."""
-        _LOGGER.debug('Updating xiaomi sensor by polling. %s', str(self))
-        self._get_from_hub(self._sid)
+        time_since_last_update = floor(time() - self._last_updated)
+        if (time_since_last_update >= self._polling_interval):
+            # Polling interval exceeded, time to run
+            self._get_from_hub(self._sid)
+            self._last_updated = time()
+            if self._fast_polling:
+                self._polling_interval = FAST_POLL_INTERVAL
+            else:
+                self._polling_interval = randint(MIN_SLEEP_POLL_INTERVAL, MAX_SLEEP_POLL_INTERVAL)
+            _LOGGER.debug('Updating xiaomi sensor %s by polling after %d seconds. Next update will come in %d seconds.', self._sid, (time_since_last_update if time_since_last_update < MAX_SLEEP_POLL_INTERVAL else 0), self._polling_interval)
 
 
 class XiaomiNatgasSensor(XiaomiBinarySensor):
@@ -149,7 +166,7 @@ class XiaomiMotionSensor(XiaomiBinarySensor):
                 '11631#issuecomment-357507744). %s', str(raw_data))
             return
 
-        self._should_poll = False
+        self._fast_polling = False
         if NO_MOTION in data:  # handle push from the hub
             self._no_motion_since = data[NO_MOTION]
             self._state = False
@@ -160,7 +177,7 @@ class XiaomiMotionSensor(XiaomiBinarySensor):
             return False
 
         if value == MOTION:
-            self._should_poll = True
+            self._fast_polling = True
             if self.entity_id is not None:
                 self._hass.bus.fire('motion', {
                     'entity_id': self.entity_id
@@ -196,7 +213,7 @@ class XiaomiDoorSensor(XiaomiBinarySensor):
 
     def parse_data(self, data, raw_data):
         """Parse data sent by gateway."""
-        self._should_poll = False
+        self._fast_polling = False
         if NO_CLOSE in data:  # handle push from the hub
             self._open_since = data[NO_CLOSE]
             return True
@@ -206,7 +223,9 @@ class XiaomiDoorSensor(XiaomiBinarySensor):
             return False
 
         if value == 'open':
-            self._should_poll = True
+            if self._open_since == 0:
+                # Use fast polling only if just opened the door/window
+                self._fast_polling = True
             if self._state:
                 return False
             self._state = True
@@ -229,14 +248,14 @@ class XiaomiWaterLeakSensor(XiaomiBinarySensor):
 
     def parse_data(self, data, raw_data):
         """Parse data sent by gateway."""
-        self._should_poll = False
+        self._fast_polling = False
 
         value = data.get(self._data_key)
         if value is None:
             return False
 
         if value == 'leak':
-            self._should_poll = True
+            self._fast_polling = True
             if self._state:
                 return False
             self._state = True
