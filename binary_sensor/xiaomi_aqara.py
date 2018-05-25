@@ -21,6 +21,7 @@ ATTR_NO_MOTION_SINCE = 'No motion since'
 DENSITY = 'density'
 ATTR_DENSITY = 'Density'
 
+FAST_POLL_UNTIL = 120
 FAST_POLL_INTERVAL = 30
 MIN_SLEEP_POLL_INTERVAL = 600
 MAX_SLEEP_POLL_INTERVAL = 1800
@@ -223,7 +224,7 @@ class XiaomiDoorSensor(XiaomiBinarySensor):
             return False
 
         if value == 'open':
-            if self._open_since == 0:
+            if self._open_since <= FAST_POLL_UNTIL:
                 # Use fast polling only if just opened the door/window
                 self._fast_polling = True
             if self._state:
