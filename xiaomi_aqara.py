@@ -293,8 +293,8 @@ class XiaomiDevice(Entity):
         """Parse battery level data sent by gateway."""
         if 'voltage' not in data:
             return False
-        max_volt = 3300
-        min_volt = 2800
+        max_volt = 3000
+        min_volt = 2500
         voltage = data['voltage']
         voltage = min(voltage, max_volt)
         voltage = max(voltage, min_volt)
