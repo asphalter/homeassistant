@@ -70,7 +70,8 @@ class XiaomiBinarySensor(XiaomiDevice, BinarySensorDevice):
         self._device_class = device_class
         self._fast_polling = False
         self._polling_interval = 0
-        self._last_updated = 0
+        self._last_updated = time()
+        self._time_since_last_update = 0
         self._density = 0
         XiaomiDevice.__init__(self, device, name, xiaomi_hub)
 
@@ -91,16 +92,16 @@ class XiaomiBinarySensor(XiaomiDevice, BinarySensorDevice):
 
     def update(self):
         """Update the sensor state."""
-        time_since_last_update = floor(time() - self._last_updated)
-        if (time_since_last_update >= self._polling_interval):
+        self._time_since_last_update = floor(time() - self._last_updated)
+        if (self._time_since_last_update >= self._polling_interval):
             # Polling interval exceeded, time to run
-            self._get_from_hub(self._sid)
             self._last_updated = time()
+            self._get_from_hub(self._sid)
             if self._fast_polling:
                 self._polling_interval = FAST_POLL_INTERVAL
             else:
                 self._polling_interval = randint(MIN_SLEEP_POLL_INTERVAL, MAX_SLEEP_POLL_INTERVAL)
-            _LOGGER.debug('Updating xiaomi sensor %s by polling after %d seconds. Next update will come in %d seconds.', self._sid, (time_since_last_update if time_since_last_update < MAX_SLEEP_POLL_INTERVAL else 0), self._polling_interval)
+            _LOGGER.debug('Updating xiaomi sensor %s by polling after %d seconds. Next update will come in %d seconds.', self._sid, self._time_since_last_update, self._polling_interval)
 
 
 class XiaomiNatgasSensor(XiaomiBinarySensor):
@@ -224,7 +225,7 @@ class XiaomiDoorSensor(XiaomiBinarySensor):
             return False
 
         if value == 'open':
-            if self._open_since <= FAST_POLL_UNTIL:
+            if self._time_since_last_update <= FAST_POLL_UNTIL:
                 # Use fast polling only if just opened the door/window
                 self._fast_polling = True
             if self._state:
